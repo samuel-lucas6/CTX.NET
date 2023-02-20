@@ -1,0 +1,22 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CTXDotNet", "CTXDotNet\CTXDotNet.csproj", "{9AA9DBAB-FC0E-441C-B30B-82CE160AB249}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CTXDotNetTests", "CTXDotNetTests\CTXDotNetTests.csproj", "{EA1FF8E6-D47A-4894-A290-6F64BE458F8B}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{9AA9DBAB-FC0E-441C-B30B-82CE160AB249}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{9AA9DBAB-FC0E-441C-B30B-82CE160AB249}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{9AA9DBAB-FC0E-441C-B30B-82CE160AB249}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{9AA9DBAB-FC0E-441C-B30B-82CE160AB249}.Release|Any CPU.Build.0 = Release|Any CPU
+		{EA1FF8E6-D47A-4894-A290-6F64BE458F8B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{EA1FF8E6-D47A-4894-A290-6F64BE458F8B}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{EA1FF8E6-D47A-4894-A290-6F64BE458F8B}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{EA1FF8E6-D47A-4894-A290-6F64BE458F8B}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+EndGlobal

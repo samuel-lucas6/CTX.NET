@@ -1,6 +1,6 @@
 ﻿/*
-    CTXConstruction: Chan and Rogaway's fully committing AEAD scheme using ChaCha20-Poly1305 and BLAKE2b-160.
-    Copyright (c) 2022 Samuel Lucas
+    CTX.NET: Chan and Rogaway's fully committing AEAD construction using ChaCha20-Poly1305 and BLAKE2b-160.
+    Copyright (c) 2022-2023 Samuel Lucas
     
     Permission is hereby granted, free of charge, to any person obtaining a copy of
     this software and associated documentation files (the "Software"), to deal in
@@ -21,59 +21,48 @@
     SOFTWARE.
 */
 
-using System.Buffers.Binary;
 using System.Security.Cryptography;
+using System.Buffers.Binary;
 using Geralt;
+using ChaCha20Poly1305 = Geralt.ChaCha20Poly1305;
 
-namespace CTXConstruction;
+namespace CTXDotNet;
 
 public static class CTX
 {
-    public const int KeySize = ChaCha20.KeySize;
-    public const int NonceSize = ChaCha20.NonceSize;
+    public const int KeySize = ChaCha20Poly1305.KeySize;
+    public const int NonceSize = ChaCha20Poly1305.NonceSize;
     public const int TagSize = 20;
     private const int AlignSize = 16;
-    private const int UInt64BytesLength = 8;
-    private const uint Counter = 1;
-
+    
     public static void Encrypt(Span<byte> ciphertext, ReadOnlySpan<byte> plaintext, ReadOnlySpan<byte> nonce, ReadOnlySpan<byte> key, ReadOnlySpan<byte> associatedData = default)
     {
-        if (ciphertext.Length != plaintext.Length + TagSize) { throw new ArgumentOutOfRangeException(nameof(ciphertext), ciphertext.Length, $"{nameof(ciphertext)} must be {plaintext.Length + TagSize} bytes long."); }
+        Validation.EqualToSize(nameof(ciphertext), ciphertext.Length, plaintext.Length + TagSize);
         
-        Span<byte> block0 = stackalloc byte[ChaCha20.BlockSize];
-        ChaCha20.Fill(block0, nonce, key);
-        Span<byte> macKey = block0[..Poly1305.KeySize];
-        
-        ChaCha20.Encrypt(ciphertext[..^TagSize], plaintext, nonce, key, Counter);
-        
-        Span<byte> tag = stackalloc byte[Poly1305.TagSize];
-        ComputeTag(tag, associatedData, plaintext, macKey);
-        CryptographicOperations.ZeroMemory(block0);
+        Span<byte> ciphertextCore = ciphertext[..^(TagSize - Poly1305.TagSize)];
+        ChaCha20Poly1305.Encrypt(ciphertextCore, plaintext, nonce, key, associatedData);
         
         using var blake2b = new IncrementalBLAKE2b(TagSize, key);
         blake2b.Update(nonce);
         blake2b.Update(associatedData);
-        blake2b.Update(tag);
+        blake2b.Update(ciphertextCore[^Poly1305.TagSize..]);
         blake2b.Finalize(ciphertext[^TagSize..]);
-        CryptographicOperations.ZeroMemory(tag);
     }
-
+    
     public static void Decrypt(Span<byte> plaintext, ReadOnlySpan<byte> ciphertext, ReadOnlySpan<byte> nonce, ReadOnlySpan<byte> key, ReadOnlySpan<byte> associatedData = default)
     {
-        if (ciphertext.Length < TagSize) { throw new ArgumentOutOfRangeException(nameof(ciphertext), ciphertext.Length, $"{nameof(ciphertext)} must be at least {TagSize} bytes long."); }
-        if (plaintext.Length != ciphertext.Length - TagSize) { throw new ArgumentOutOfRangeException(nameof(plaintext), plaintext.Length, $"{nameof(plaintext)} must be {ciphertext.Length - TagSize} bytes long."); }
+        Validation.NotLessThanMin(nameof(ciphertext), ciphertext.Length, TagSize);
+        Validation.EqualToSize(nameof(plaintext), plaintext.Length, ciphertext.Length - TagSize);
         
         Span<byte> block0 = stackalloc byte[ChaCha20.BlockSize];
         ChaCha20.Fill(block0, nonce, key);
         Span<byte> macKey = block0[..Poly1305.KeySize];
         
-        ReadOnlySpan<byte> ciphertextNoTag = ciphertext[..^TagSize];
-        ChaCha20.Decrypt(plaintext, ciphertextNoTag, nonce, key, Counter);
-
         Span<byte> tag = stackalloc byte[Poly1305.TagSize];
-        ComputeTag(tag, associatedData, plaintext, macKey);
+        ReadOnlySpan<byte> ciphertextNoTag = ciphertext[..^TagSize];
+        ComputeTag(tag, associatedData, ciphertextNoTag, macKey);
         CryptographicOperations.ZeroMemory(block0);
-
+        
         Span<byte> tagHash = stackalloc byte[TagSize];
         using var blake2b = new IncrementalBLAKE2b(tagHash.Length, key);
         blake2b.Update(nonce);
@@ -81,32 +70,34 @@ public static class CTX
         blake2b.Update(tag);
         blake2b.Finalize(tagHash);
         CryptographicOperations.ZeroMemory(tag);
-
+        
         bool valid = ConstantTime.Equals(tagHash, ciphertext[^TagSize..]);
         CryptographicOperations.ZeroMemory(tagHash);
-
-        if (valid) return;
-        CryptographicOperations.ZeroMemory(plaintext);
-        throw new CryptographicException("Authentication failed.");
+        
+        if (!valid) {
+            throw new CryptographicException();
+        }
+        
+        ChaCha20.Decrypt(plaintext, ciphertextNoTag, nonce, key, counter: 1);
     }
     
-    private static void ComputeTag(Span<byte> tag, ReadOnlySpan<byte> associatedData, ReadOnlySpan<byte> plaintext, ReadOnlySpan<byte> macKey)
+    private static void ComputeTag(Span<byte> tag, ReadOnlySpan<byte> associatedData, ReadOnlySpan<byte> ciphertext, ReadOnlySpan<byte> macKey)
     {
         Span<byte> padding1 = stackalloc byte[Align(associatedData.Length, AlignSize)];
-        Span<byte> padding2 = stackalloc byte[Align(plaintext.Length, AlignSize)];
+        Span<byte> padding2 = stackalloc byte[Align(ciphertext.Length, AlignSize)];
         padding1.Clear(); padding2.Clear();
         
-        Span<byte> associatedDataLength = stackalloc byte[UInt64BytesLength], plaintextLength = stackalloc byte[UInt64BytesLength];
+        Span<byte> associatedDataLength = stackalloc byte[sizeof(ulong)], ciphertextLength = stackalloc byte[sizeof(ulong)];
         BinaryPrimitives.WriteUInt64LittleEndian(associatedDataLength, (ulong)associatedData.Length);
-        BinaryPrimitives.WriteUInt64LittleEndian(plaintextLength, (ulong)plaintext.Length);
-
+        BinaryPrimitives.WriteUInt64LittleEndian(ciphertextLength, (ulong)ciphertext.Length);
+        
         using var poly1305 = new IncrementalPoly1305(macKey);
         poly1305.Update(associatedData);
         poly1305.Update(padding1);
-        poly1305.Update(plaintext);
+        poly1305.Update(ciphertext);
         poly1305.Update(padding2);
         poly1305.Update(associatedDataLength);
-        poly1305.Update(plaintextLength);
+        poly1305.Update(ciphertextLength);
         poly1305.Finalize(tag);
     }
     

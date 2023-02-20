@@ -1,0 +1,24 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFramework>net6.0</TargetFramework>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+        <Version>2.0.0</Version>
+        <Authors>Samuel Lucas</Authors>
+        <Title>CTX.NET</Title>
+        <Description>Chan and Rogaway's fully committing AEAD construction using ChaCha20-Poly1305 and BLAKE2b-160.</Description>
+        <Copyright>Copyright (c) 2022-2023 Samuel Lucas</Copyright>
+        <PackageProjectUrl>https://github.com/samuel-lucas6/CTX.NET</PackageProjectUrl>
+        <RepositoryUrl>https://github.com/samuel-lucas6/CTX.NET</RepositoryUrl>
+        <RepositoryType>git</RepositoryType>
+        <PackageTags>ctx chacha20poly1305 blake2b fully-committing</PackageTags>
+        <PackageLicenseExpression>MIT</PackageLicenseExpression>
+        <PackageRequireLicenseAcceptance>true</PackageRequireLicenseAcceptance>
+    </PropertyGroup>
+
+    <ItemGroup>
+      <PackageReference Include="Geralt" Version="2.0.0" />
+    </ItemGroup>
+
+</Project>

@@ -16,7 +16,7 @@
     </ItemGroup>
 
     <ItemGroup>
-      <ProjectReference Include="..\CTXConstruction\CTXConstruction.csproj" />
+      <ProjectReference Include="..\CTXDotNet\CTXDotNet.csproj" />
     </ItemGroup>
 
 </Project>
